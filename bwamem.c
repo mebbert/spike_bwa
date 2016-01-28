@@ -981,6 +981,7 @@ int mem_approx_mapq_se(const mem_opt_t *opt, const mem_alnreg_t *a, const mem_al
 // 		fprintf(stderr, "seedcov: %d\n", a_parent->seedcov);
 // 		fprintf(stderr, "secondary: %d\n", a_parent->secondary);
 // 		fprintf(stderr, "is alt: %d\n", a_parent->is_alt);
+// 		fprintf(stderr, "frac_rep: %f\n", a_parent->frac_rep);
 // 
 // 
 // 		fprintf(stderr, "\n#############\n");
@@ -996,6 +997,7 @@ int mem_approx_mapq_se(const mem_opt_t *opt, const mem_alnreg_t *a, const mem_al
 // 		fprintf(stderr, "seedcov: %d\n", a->seedcov);
 // 		fprintf(stderr, "secondary: %d\n", a->secondary);
 // 		fprintf(stderr, "is alt: %d\n", a->is_alt);
+// 		fprintf(stderr, "frac_rep: %f\n", a->frac_rep);
 // 	}
 
 	int mapq, l, sub = a->sub? a->sub : opt->min_seed_len * opt->a;
@@ -1044,8 +1046,12 @@ int mem_approx_mapq_se(const mem_opt_t *opt, const mem_alnreg_t *a, const mem_al
 		mapq = (int)(MEM_MAPQ_COEF * (1. - (double)sub / a->score) * log(a->seedcov) + .499);
 		mapq = identity < 0.95? (int)(mapq * identity * identity + .499) : mapq;
 	}
-	if (a->sub_n > 0){
-		mapq -= (int)(4.343 * log(a->sub_n+1) + .499);
+
+	/* I (Mark Ebbert) modified this to only penalize
+	 * if it aligns to more than two places. Two freebies.
+	 */
+	if (a->sub_n > 2){
+		mapq -= (int)(4.343 * log((a->sub_n+1) - 2 /* subtracting two. keeping everything else the same for reference */) + .499);
 	}
 	if (mapq > 60) mapq = 60;
 	if (mapq < 0) mapq = 0;

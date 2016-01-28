@@ -1,3 +1,4 @@
 *.o
 libbwa.a
 bwa
+*.swp
