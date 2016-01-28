@@ -65,13 +65,13 @@ typedef struct {
 	int sub;        // 2nd best SW score
 	int alt_sc;
 	int csub;       // SW score of a tandem hit
-	int sub_n;      // approximate number of suboptimal hits
+	int sub_n;      // approximate number of suboptimal hits; NOTE by Mark Ebbert: I think 'sub' is a hit at a different locus.
 	int w;          // actual band width used in extension
 	int seedcov;    // length of regions coverged by seeds
 	int secondary;  // index of the parent hit shadowing the current hit; <0 if primary
 	int secondary_all;
 	int seedlen0;   // length of the starting seed
-	int n_comp:30, is_alt:2; // number of sub-alignments chained together
+	int n_comp:30, is_alt:2; // number of sub-alignments chained together; (NOTE by Mark Ebbert) I think is_alt is an alternate alignment in the same locus.
 	float frac_rep;
 	uint64_t hash;
 } mem_alnreg_t;
@@ -162,7 +162,8 @@ extern "C" {
 	 *
 	 * @return       CIGAR, strand, mapping quality and forward-strand position
 	 */
-	mem_aln_t mem_reg2aln(const mem_opt_t *opt, const bntseq_t *bns, const uint8_t *pac, int l_seq, const char *seq, const mem_alnreg_t *ar);
+	/* I (Mark Ebbert) added the 'ar_parent' parameter. It is the 'ar' parent.*/
+	mem_aln_t mem_reg2aln(const mem_opt_t *opt, const bntseq_t *bns, const uint8_t *pac, int l_seq, const char *seq, const mem_alnreg_t *ar, const mem_alnreg_t *ar_parent);
 	mem_aln_t mem_reg2aln2(const mem_opt_t *opt, const bntseq_t *bns, const uint8_t *pac, int l_seq, const char *seq, const mem_alnreg_t *ar, const char *name);
 
 	/**

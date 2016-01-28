@@ -332,7 +332,13 @@ int mem_sam_pe(const mem_opt_t *opt, const bntseq_t *bns, const uint8_t *pac, co
 		} else XA[0] = XA[1] = 0;
 		// write SAM
 		for (i = 0; i < 2; ++i) {
-			h[i] = mem_reg2aln(opt, bns, pac, s[i].l_seq, s[i].seq, &a[i].a[z[i]]);
+
+			/* I (Mark Ebbert) am passing in 0 for the last argment that now represents
+			 * the parent alignement, if &a[i].a[z[i]] is an alternate to begin with.
+			 * The parent is 0 because we are not performing (or supporting) paired-end
+			 * in our current approach.
+			 */
+			h[i] = mem_reg2aln(opt, bns, pac, s[i].l_seq, s[i].seq, &a[i].a[z[i]], 0);
 			h[i].mapq = q_se[i];
 			h[i].flag |= 0x40<<i | extra_flag;
 			h[i].XA = XA[i]? XA[i][z[i]] : 0;
@@ -340,7 +346,9 @@ int mem_sam_pe(const mem_opt_t *opt, const bntseq_t *bns, const uint8_t *pac, co
 			if (n_pri[i] < a[i].n) { // the read has ALT hits
 				mem_alnreg_t *p = &a[i].a[n_pri[i]];
 				if (p->score < opt->T || p->secondary >= 0 || !p->is_alt) continue;
-				g[i] = mem_reg2aln(opt, bns, pac, s[i].l_seq, s[i].seq, p);
+
+				/* (Mark Ebbert). Same as above. */
+				g[i] = mem_reg2aln(opt, bns, pac, s[i].l_seq, s[i].seq, p, 0);
 				g[i].flag |= 0x800 | 0x40<<i | extra_flag;
 				g[i].XA = XA[i]? XA[i][n_pri[i]] : 0;
 				aa[i][n_aa[i]++] = g[i];
@@ -371,8 +379,10 @@ no_pairing:
 			else if (n_pri[i] < a[i].n && a[i].a[n_pri[i]].score >= opt->T)
 				which = n_pri[i];
 		}
-		if (which >= 0) h[i] = mem_reg2aln(opt, bns, pac, s[i].l_seq, s[i].seq, &a[i].a[which]);
-		else h[i] = mem_reg2aln(opt, bns, pac, s[i].l_seq, s[i].seq, 0);
+
+		/* (Mark Ebbert) Same as above. */
+		if (which >= 0) h[i] = mem_reg2aln(opt, bns, pac, s[i].l_seq, s[i].seq, &a[i].a[which], 0);
+		else h[i] = mem_reg2aln(opt, bns, pac, s[i].l_seq, s[i].seq, 0, 0);
 	}
 	if (!(opt->flag & MEM_F_NOPAIRING) && h[0].rid == h[1].rid && h[0].rid >= 0) { // if the top hits from the two ends constitute a proper pair, flag it.
 		int64_t dist;

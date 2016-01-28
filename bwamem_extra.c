@@ -141,7 +141,18 @@ char **mem_gen_alt(const mem_opt_t *opt, const bntseq_t *bns, const uint8_t *pac
 		mem_aln_t t;
 		if ((r = get_pri_idx(opt->XA_drop_ratio, a->a, i)) < 0) continue;
 		if (cnt[r] > opt->max_XA_hits_alt || (!has_alt[r] && cnt[r] > opt->max_XA_hits)) continue;
-		t = mem_reg2aln(opt, bns, pac, l_query, query, &a->a[i]);
+
+		/* I (Mark Ebbert) am getting the parent, if there is one. Pass the parent too. */
+		mem_alnreg_t *parent;
+		mem_alnreg_t *p = &a->a[i];
+		if(p->secondary >= 0){
+			parent = &a->a[p->secondary];
+		}
+		else{
+			parent = 0;
+		}
+
+		t = mem_reg2aln(opt, bns, pac, l_query, query, &a->a[i], parent);
 		str.l = 0;
 		kputs(bns->anns[t.rid].name, &str);
 		kputc(',', &str); kputc("+-"[t.is_rev], &str); kputl(t.pos + 1, &str);
@@ -151,6 +162,12 @@ char **mem_gen_alt(const mem_opt_t *opt, const bntseq_t *bns, const uint8_t *pac
 			kputc("MIDSHN"[t.cigar[k]&0xf], &str);
 		}
 		kputc(',', &str); kputw(t.NM, &str);
+
+		/* I (Mark Ebbert) added this to include the quality score for the secondary alignment.
+		 * I also made it calculate quality scores for secondary alignments, instead of making
+		 * them 0.
+		 */
+		kputc(',', &str); kputw(t.mapq, &str);
 		kputc(';', &str);
 		free(t.cigar);
 		kputsn(str.s, str.l, &aln[r]);

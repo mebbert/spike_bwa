@@ -282,7 +282,7 @@ mem_chain_v mem_chain(const mem_opt_t *opt, const bwt_t *bwt, const bntseq_t *bn
 			int rid, to_add = 0;
 			s.rbeg = tmp.pos = bwt_sa(bwt, p->x[0] + k); // this is the base coordinate in the forward-reverse reference
 			s.qbeg = p->info>>32;
-			s.score= s.len = slen;
+			s.score = s.len = slen;
 			rid = bns_intv2rid(bns, s.rbeg, s.rbeg + s.len);
 			if (rid < 0) continue; // bridging multiple reference sequences or the forward-reverse boundary; TODO: split the seed; don't discard it!!!
 			if (kb_size(tree)) {
@@ -532,13 +532,24 @@ int mem_mark_primary_se(const mem_opt_t *opt, int n, mem_alnreg_t *a, int64_t id
 	if (n == 0) return 0;
 	for (i = n_pri = 0; i < n; ++i) {
 		a[i].sub = a[i].alt_sc = 0, a[i].secondary = a[i].secondary_all = -1, a[i].hash = hash_64(id+i);
-		if (!a[i].is_alt) ++n_pri;
+		
+		/* Note by Mark Ebbert: apparently is_alt is already set,
+		 * but not sub scores? Maybe it found the alternates, but
+		 * is now ready to generate sub scores.
+		 *
+		 * Also doesn't know about secondary's
+		 */
+		if (!a[i].is_alt) ++n_pri; 
 	}
 	ks_introsort(mem_ars_hash, n, a);
 	mem_mark_primary_se_core(opt, n, a, &z);
 	for (i = 0; i < n; ++i) {
 		mem_alnreg_t *p = &a[i];
 		p->secondary_all = i; // keep the rank in the first round
+
+		/* Note by Mark Ebbert: if this alignment is NOT an alternate,
+		 * but it is a secondary and it's parent is an alternate, then
+		 * inherit the parent's alternate score */
 		if (!p->is_alt && p->secondary >= 0 && a[p->secondary].is_alt)
 			p->alt_sc = a[p->secondary].score;
 	}
@@ -816,6 +827,7 @@ static inline int get_rlen(int n_cigar, const uint32_t *cigar)
 	return l;
 }
 
+/* Note by Mark Ebbert: This method appears to nothing more than a SAM file writer. All of the alignment logic is done by now. */
 void mem_aln2sam(const mem_opt_t *opt, const bntseq_t *bns, kstring_t *str, bseq1_t *s, int n, const mem_aln_t *list, int which, const mem_aln_t *m_)
 {
 	int i, l_name;
@@ -924,7 +936,10 @@ void mem_aln2sam(const mem_opt_t *opt, const bntseq_t *bns, kstring_t *str, bseq
 				for (k = 0; k < r->n_cigar; ++k) {
 					kputw(r->cigar[k]>>4, str); kputc("MIDSH"[r->cigar[k]&0xf], str);
 				}
+
+				/* I (Mark Ebbert) added this line to include mapq for secondary alignments */
 				kputc(',', str); kputw(r->mapq, str);
+
 				kputc(',', str); kputw(r->NM, str);
 				kputc(';', str);
 			}
@@ -949,29 +964,95 @@ void mem_aln2sam(const mem_opt_t *opt, const bntseq_t *bns, kstring_t *str, bseq
  * Integrated interface *
  ************************/
 
-int mem_approx_mapq_se(const mem_opt_t *opt, const mem_alnreg_t *a)
+int mem_approx_mapq_se(const mem_opt_t *opt, const mem_alnreg_t *a, const mem_alnreg_t *a_parent)
 {
+
+// 	if(a->secondary >= 0/* && a_parent->score == a->score*/){
+// 		fprintf(stderr, "\n\n\n\n##########\n");
+// 		fprintf(stderr, "# Parent #\n");
+// 		fprintf(stderr, "##########\n");
+// 
+// 		fprintf(stderr, "alt score: %d\n", a_parent->alt_sc);
+// 		fprintf(stderr, "score: %d\n", a_parent->score);
+// 		fprintf(stderr, "true score: %d\n", a_parent->truesc);
+// 		fprintf(stderr, "sub score: %d\n", a_parent->sub);
+// 		fprintf(stderr, "csub score: %d\n", a_parent->csub);
+// 		fprintf(stderr, "n sub: %d\n", a_parent->sub_n);
+// 		fprintf(stderr, "seedcov: %d\n", a_parent->seedcov);
+// 		fprintf(stderr, "secondary: %d\n", a_parent->secondary);
+// 		fprintf(stderr, "is alt: %d\n", a_parent->is_alt);
+// 
+// 
+// 		fprintf(stderr, "\n#############\n");
+// 		fprintf(stderr, "# Secondary #\n");
+// 		fprintf(stderr, "#############\n");
+// 
+// 		fprintf(stderr, "alt score: %d\n", a->alt_sc);
+// 		fprintf(stderr, "score: %d\n", a->score);
+// 		fprintf(stderr, "true score: %d\n", a->truesc);
+// 		fprintf(stderr, "sub score: %d\n", a->sub);
+// 		fprintf(stderr, "csub score: %d\n", a->csub);
+// 		fprintf(stderr, "n sub: %d\n", a->sub_n);
+// 		fprintf(stderr, "seedcov: %d\n", a->seedcov);
+// 		fprintf(stderr, "secondary: %d\n", a->secondary);
+// 		fprintf(stderr, "is alt: %d\n", a->is_alt);
+// 	}
+
 	int mapq, l, sub = a->sub? a->sub : opt->min_seed_len * opt->a;
 	double identity;
 	sub = a->csub > sub? a->csub : sub;
+
+	/* I (Mark Ebbert) am generating a sub score for alternate hits. Get
+	 * the difference between the parent's and alternate's scores, and
+	 * subtract that difference from the alternate's score. That will be
+	 * the subscore.
+	 */
+	if(a->secondary >= 0){
+//		fprintf(stderr, "\nsub before: %d\n", sub);
+		double parentPercentage = (double)a_parent->sub/a_parent->score;
+		sub = a->score * parentPercentage;
+//		fprintf(stderr, "Parent perc.: %f\n", parentPercentage);
+//		fprintf(stderr, "sub after: %d\n", sub);
+	}
+
 	if (sub >= a->score) return 0;
+
+	/* Mark Ebbert: Calculate the length in query or reference.
+	 * Whichever is longer. qe = query end, qb = query
+	 * beginning, re = reference end, etc.
+	 * */
 	l = a->qe - a->qb > a->re - a->rb? a->qe - a->qb : a->re - a->rb;
 	identity = 1. - (double)(l * opt->a - a->score) / (opt->a + opt->b) / l;
 	if (a->score == 0) {
 		mapq = 0;
 	} else if (opt->mapQ_coef_len > 0) {
+
 		double tmp;
 		tmp = l < opt->mapQ_coef_len? 1. : opt->mapQ_coef_fac / log(l);
 		tmp *= identity * identity;
 		mapq = (int)(6.02 * (a->score - sub) / opt->a * tmp * tmp + .499);
+//		if(a->secondary >= 0){
+//			fprintf(stderr, "Here1\n");
+//			fprintf(stderr, "length: %d\n", l);
+//			fprintf(stderr, "identity: %f\n", identity);
+//			fprintf(stderr, "MapQ_coef_len: %f\n", opt->mapQ_coef_len);
+//			fprintf(stderr, "opt A: %d\n", opt->a);
+//			fprintf(stderr, "tmp: %f\n", tmp);
+//			fprintf(stderr, "mapq 1: %d\n", mapq);
+//		}
 	} else {
 		mapq = (int)(MEM_MAPQ_COEF * (1. - (double)sub / a->score) * log(a->seedcov) + .499);
 		mapq = identity < 0.95? (int)(mapq * identity * identity + .499) : mapq;
 	}
-	if (a->sub_n > 0) mapq -= (int)(4.343 * log(a->sub_n+1) + .499);
+	if (a->sub_n > 0){
+		mapq -= (int)(4.343 * log(a->sub_n+1) + .499);
+	}
 	if (mapq > 60) mapq = 60;
 	if (mapq < 0) mapq = 0;
 	mapq = (int)(mapq * (1. - a->frac_rep) + .499);
+//	if(a->secondary >= 0){
+//		fprintf(stderr, "mapq: %d\n", mapq);
+//	}
 	return mapq;
 }
 
@@ -990,16 +1071,33 @@ void mem_reg2sam(const mem_opt_t *opt, const bntseq_t *bns, const uint8_t *pac, 
 	str.l = str.m = 0; str.s = 0;
 	for (k = l = 0; k < a->n; ++k) {
 		mem_alnreg_t *p = &a->a[k];
+		
+		/* I (Mark Ebbert) am getting the parent, if there is one. Pass the parent too. */
+		mem_alnreg_t *parent;
+		if(p->secondary >= 0){
+			parent = &a->a[p->secondary];
+		}
+		else{
+			parent = 0;
+		}
+
 		mem_aln_t *q;
 		if (p->score < opt->T) continue;
+		
 		if (p->secondary >= 0 && (p->is_alt || !(opt->flag&MEM_F_ALL))) continue;
-		if (p->secondary >= 0 && p->secondary < INT_MAX && p->score < a->a[p->secondary].score * opt->drop_ratio) continue;
+		
+		// (Note by Mark Ebbert) skip any secondary hits where the score is less than half the parent's.
+		if (p->secondary >= 0 && p->secondary < INT_MAX && p->score < a->a[p->secondary].score * opt->drop_ratio) continue; 
+
 		q = kv_pushp(mem_aln_t, aa);
-		*q = mem_reg2aln(opt, bns, pac, s->l_seq, s->seq, p);
+		*q = mem_reg2aln(opt, bns, pac, s->l_seq, s->seq, p, parent);
 		assert(q->rid >= 0); // this should not happen with the new code
 		q->XA = XA? XA[k] : 0;
 		q->flag |= extra_flag; // flag secondary
-		if (p->secondary >= 0) q->sub = -1; // don't output sub-optimal score
+        
+        /* I (Mark Ebbert) commented this out. Don't modify secondary alignments */
+//		if (p->secondary >= 0) q->sub = -1; // don't output sub-optimal score
+        
 		if (l && p->secondary < 0) // if supplementary
 			q->flag |= (opt->flag&MEM_F_NO_MULTI)? 0x10000 : 0x800;
 		if (l && !p->is_alt && q->mapq > aa.a[0].mapq) q->mapq = aa.a[0].mapq;
@@ -1007,7 +1105,7 @@ void mem_reg2sam(const mem_opt_t *opt, const bntseq_t *bns, const uint8_t *pac, 
 	}
 	if (aa.n == 0) { // no alignments good enough; then write an unaligned record
 		mem_aln_t t;
-		t = mem_reg2aln(opt, bns, pac, s->l_seq, s->seq, 0);
+		t = mem_reg2aln(opt, bns, pac, s->l_seq, s->seq, 0, 0);
 		t.flag |= extra_flag;
 		mem_aln2sam(opt, bns, &str, s, 1, &t, 0, m);
 	} else {
@@ -1063,7 +1161,7 @@ mem_alnreg_v mem_align1_core(const mem_opt_t *opt, const bwt_t *bwt, const bntse
 	return regs;
 }
 
-mem_aln_t mem_reg2aln(const mem_opt_t *opt, const bntseq_t *bns, const uint8_t *pac, int l_query, const char *query_, const mem_alnreg_t *ar)
+mem_aln_t mem_reg2aln(const mem_opt_t *opt, const bntseq_t *bns, const uint8_t *pac, int l_query, const char *query_, const mem_alnreg_t *ar, const mem_alnreg_t *ar_parent)
 {
 	mem_aln_t a;
 	int i, w2, tmp, qb, qe, NM, score, is_rev, last_sc = -(1<<30), l_MD;
@@ -1080,7 +1178,16 @@ mem_aln_t mem_reg2aln(const mem_opt_t *opt, const bntseq_t *bns, const uint8_t *
 	query = malloc(l_query);
 	for (i = 0; i < l_query; ++i) // convert to the nt4 encoding
 		query[i] = query_[i] < 5? query_[i] : nst_nt4_table[(int)query_[i]];
-	a.mapq = ar->secondary < 0? mem_approx_mapq_se(opt, ar) : 0;
+    
+    
+    
+    /* I (Mark Ebbert) modified this to always calculate the mapq. Not just
+     * if it's a primary alignment.
+     */
+	// a.mapq = ar->secondary < 0? mem_approx_mapq_se(opt, ar) : 0;
+	a.mapq = mem_approx_mapq_se(opt, ar, ar_parent);
+    
+    
 	if (ar->secondary >= 0) a.flag |= 0x100; // secondary alignment
 	tmp = infer_bw(qe - qb, re - rb, ar->truesc, opt->a, opt->o_del, opt->e_del);
 	w2  = infer_bw(qe - qb, re - rb, ar->truesc, opt->a, opt->o_ins, opt->e_ins);
@@ -1169,6 +1276,7 @@ static void worker2(void *data, int i, int tid)
 	if (!(w->opt->flag&MEM_F_PE)) {
 		if (bwa_verbose >= 4) printf("=====> Finalizing read '%s' <=====\n", w->seqs[i].name);
 		if (w->opt->flag & MEM_F_ALN_REG) {
+
 			mem_reg2ovlp(w->opt, w->bns, w->pac, &w->seqs[i], &w->regs[i]);
 		} else {
 			mem_mark_primary_se(w->opt, w->regs[i].n, w->regs[i].a, w->n_processed + i);
@@ -1182,6 +1290,7 @@ static void worker2(void *data, int i, int tid)
 	}
 }
 
+/* Note by Mark Ebbert: this must be where it all starts. Calls worker1 in 'kt_for' command */
 void mem_process_seqs(const mem_opt_t *opt, const bwt_t *bwt, const bntseq_t *bns, const uint8_t *pac, int64_t n_processed, int n, bseq1_t *seqs, const mem_pestat_t *pes0)
 {
 	extern void kt_for(int n_threads, void (*func)(void*,int,int), void *data, int n);
