@@ -6,6 +6,7 @@
 #include <math.h>
 #ifdef HAVE_PTHREAD
 #include <pthread.h>
+#include <inttypes.h>
 #endif
 
 #include "kstring.h"
@@ -65,6 +66,7 @@ mem_opt_t *mem_opt_init()
 	o->split_width = 10;
 	o->max_occ = 500;
 	o->max_chain_gap = 10000;
+//	o->max_chain_gap = 100;
 	o->max_ins = 10000;
 	o->mask_level = 0.50;
 	o->drop_ratio = 0.50;
@@ -499,6 +501,11 @@ typedef kvec_t(int) int_v;
 
 static void mem_mark_primary_se_core(const mem_opt_t *opt, int n, mem_alnreg_t *a, int_v *z)
 { // similar to the loop in mem_chain_flt()
+
+	/* Note by Mark Ebbert: This function appears to be purposed for determining
+	 * whether multiple alignments for the same 'read' are similar enough for one
+	 * to be considered a sub alignment. a[j]'s sub score is set to a[i]'s score.
+	 */
 	int i, k, tmp;
 	tmp = opt->a + opt->b;
 	tmp = opt->o_del + opt->e_del > tmp? opt->o_del + opt->e_del : tmp;
@@ -516,6 +523,13 @@ static void mem_mark_primary_se_core(const mem_opt_t *opt, int n, mem_alnreg_t *
 					if (a[j].sub == 0) a[j].sub = a[i].score;
 					if (a[j].score - a[i].score <= tmp && (a[j].is_alt || !a[i].is_alt))
 						++a[j].sub_n;
+
+					if (a[i].score == 200){
+						fprintf(stderr, "\n(i) a[%d] qb-qe: %d - %d\n", i, a[i].qb, a[i].qe);
+						fprintf(stderr, "(i) a[%d] rb-re: %" PRId64 " - %" PRId64 "\n", i, a[i].rb, a[i].re);
+						fprintf(stderr, "(j) a[%d] qb-qe: %d - %d\n", j, a[j].qb, a[j].qe);
+						fprintf(stderr, "(j) a[%d] rb-re: %" PRId64 " - %" PRId64 "\n", j, a[j].rb, a[j].re);
+					}
 					break;
 				}
 			}
@@ -538,11 +552,20 @@ int mem_mark_primary_se(const mem_opt_t *opt, int n, mem_alnreg_t *a, int64_t id
 		 * is now ready to generate sub scores.
 		 *
 		 * Also doesn't know about secondary's
+		 *
+		 * 'n_pri' seems to be counting the number of primary 
+		 * alignments.
 		 */
 		if (!a[i].is_alt) ++n_pri; 
 	}
 	ks_introsort(mem_ars_hash, n, a);
-	mem_mark_primary_se_core(opt, n, a, &z);
+
+	/* I (Mark Ebbert) am removing mem_mark_primary_se_core from
+	 * service to prevent both primary and sub alignments from being
+	 * excluded. We want to know if it aligns to multiple places
+	 * really well.
+	 */
+//	mem_mark_primary_se_core(opt, n, a, &z);
 	for (i = 0; i < n; ++i) {
 		mem_alnreg_t *p = &a[i];
 		p->secondary_all = i; // keep the rank in the first round
@@ -563,10 +586,16 @@ int mem_mark_primary_se(const mem_opt_t *opt, int n, mem_alnreg_t *a, int64_t id
 				if (a[i].is_alt) a[i].secondary = INT_MAX;
 			} else a[i].secondary_all = -1;
 		}
-		if (n_pri > 0) { // mark primary for hits to the primary assembly only
-			for (i = 0; i < n_pri; ++i) a[i].sub = 0, a[i].secondary = -1;
-			mem_mark_primary_se_core(opt, n_pri, a, &z);
-		}
+
+	/* I (Mark Ebbert) am removing mem_mark_primary_se_core from
+	 * service to prevent both primary and sub alignments from being
+	 * excluded. We want to know if it aligns to multiple places
+	 * really well.
+	 */
+//		if (n_pri > 0) { // mark primary for hits to the primary assembly only
+//			for (i = 0; i < n_pri; ++i) a[i].sub = 0, a[i].secondary = -1;
+//			mem_mark_primary_se_core(opt, n_pri, a, &z);
+//		}
 	} else {
 		for (i = 0; i < n; ++i)
 			a[i].secondary_all = a[i].secondary;
@@ -968,37 +997,43 @@ int mem_approx_mapq_se(const mem_opt_t *opt, const mem_alnreg_t *a, const mem_al
 {
 
 // 	if(a->secondary >= 0/* && a_parent->score == a->score*/){
-// 		fprintf(stderr, "\n\n\n\n##########\n");
-// 		fprintf(stderr, "# Parent #\n");
-// 		fprintf(stderr, "##########\n");
-// 
-// 		fprintf(stderr, "alt score: %d\n", a_parent->alt_sc);
-// 		fprintf(stderr, "score: %d\n", a_parent->score);
-// 		fprintf(stderr, "true score: %d\n", a_parent->truesc);
-// 		fprintf(stderr, "sub score: %d\n", a_parent->sub);
-// 		fprintf(stderr, "csub score: %d\n", a_parent->csub);
-// 		fprintf(stderr, "n sub: %d\n", a_parent->sub_n);
-// 		fprintf(stderr, "seedcov: %d\n", a_parent->seedcov);
-// 		fprintf(stderr, "secondary: %d\n", a_parent->secondary);
-// 		fprintf(stderr, "is alt: %d\n", a_parent->is_alt);
-// 		fprintf(stderr, "frac_rep: %f\n", a_parent->frac_rep);
-// 
-// 
-// 		fprintf(stderr, "\n#############\n");
-// 		fprintf(stderr, "# Secondary #\n");
-// 		fprintf(stderr, "#############\n");
-// 
-// 		fprintf(stderr, "alt score: %d\n", a->alt_sc);
-// 		fprintf(stderr, "score: %d\n", a->score);
-// 		fprintf(stderr, "true score: %d\n", a->truesc);
-// 		fprintf(stderr, "sub score: %d\n", a->sub);
-// 		fprintf(stderr, "csub score: %d\n", a->csub);
-// 		fprintf(stderr, "n sub: %d\n", a->sub_n);
-// 		fprintf(stderr, "seedcov: %d\n", a->seedcov);
-// 		fprintf(stderr, "secondary: %d\n", a->secondary);
-// 		fprintf(stderr, "is alt: %d\n", a->is_alt);
-// 		fprintf(stderr, "frac_rep: %f\n", a->frac_rep);
-// 	}
+	if(a->rb > 35537008 && a->rb < 35540000){
+
+ 		fprintf(stderr, "\n#####\n");
+ 		fprintf(stderr, "# a #\n");
+ 		fprintf(stderr, "#####\n");
+ 
+ 		fprintf(stderr, "ref rb - re: %" PRId64 " - %" PRId64 "\n", a->rb, a->re);
+ 		fprintf(stderr, "alt score: %d\n", a->alt_sc);
+ 		fprintf(stderr, "score: %d\n", a->score);
+ 		fprintf(stderr, "true score: %d\n", a->truesc);
+ 		fprintf(stderr, "sub score: %d\n", a->sub);
+ 		fprintf(stderr, "csub score: %d\n", a->csub);
+ 		fprintf(stderr, "n sub: %d\n", a->sub_n);
+ 		fprintf(stderr, "seedcov: %d\n", a->seedcov);
+ 		fprintf(stderr, "secondary: %d\n", a->secondary);
+ 		fprintf(stderr, "is alt: %d\n", a->is_alt);
+ 		fprintf(stderr, "frac_rep: %f\n", a->frac_rep);
+
+
+	 	if(a->secondary >= 0/* && a_parent->score == a->score*/){
+			fprintf(stderr, "\n\n\n\n##########\n");
+			fprintf(stderr, "# Parent #\n");
+			fprintf(stderr, "##########\n");
+	 
+			fprintf(stderr, "parent rb - re: %" PRId64 " - %" PRId64 "\n", a_parent->rb, a_parent->re);
+			fprintf(stderr, "alt score: %d\n", a_parent->alt_sc);
+			fprintf(stderr, "score: %d\n", a_parent->score);
+			fprintf(stderr, "true score: %d\n", a_parent->truesc);
+			fprintf(stderr, "sub score: %d\n", a_parent->sub);
+			fprintf(stderr, "csub score: %d\n", a_parent->csub);
+			fprintf(stderr, "n sub: %d\n", a_parent->sub_n);
+			fprintf(stderr, "seedcov: %d\n", a_parent->seedcov);
+			fprintf(stderr, "secondary: %d\n", a_parent->secondary);
+			fprintf(stderr, "is alt: %d\n", a_parent->is_alt);
+			fprintf(stderr, "frac_rep: %f\n", a_parent->frac_rep);
+		}
+ 	}
 
 	int mapq, l, sub = a->sub? a->sub : opt->min_seed_len * opt->a;
 	double identity;
@@ -1034,14 +1069,14 @@ int mem_approx_mapq_se(const mem_opt_t *opt, const mem_alnreg_t *a, const mem_al
 		tmp *= identity * identity;
 		mapq = (int)(6.02 * (a->score - sub) / opt->a * tmp * tmp + .499);
 //		if(a->secondary >= 0){
-//			fprintf(stderr, "Here1\n");
-//			fprintf(stderr, "length: %d\n", l);
-//			fprintf(stderr, "identity: %f\n", identity);
-//			fprintf(stderr, "MapQ_coef_len: %f\n", opt->mapQ_coef_len);
-//			fprintf(stderr, "opt A: %d\n", opt->a);
-//			fprintf(stderr, "tmp: %f\n", tmp);
-//			fprintf(stderr, "mapq 1: %d\n", mapq);
-//		}
+ 		if(a->rb > 35537008 && a->rb < 35540000){
+ 			fprintf(stderr, "\n\nlength: %d\n", l);
+ 			fprintf(stderr, "identity: %f\n", identity);
+ 			fprintf(stderr, "MapQ_coef_len: %f\n", opt->mapQ_coef_len);
+ 			fprintf(stderr, "opt A: %d\n", opt->a);
+ 			fprintf(stderr, "tmp: %f\n", tmp);
+ 			fprintf(stderr, "mapq 1: %d\n", mapq);
+ 		}
 	} else {
 		mapq = (int)(MEM_MAPQ_COEF * (1. - (double)sub / a->score) * log(a->seedcov) + .499);
 		mapq = identity < 0.95? (int)(mapq * identity * identity + .499) : mapq;
