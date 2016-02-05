@@ -565,7 +565,7 @@ int mem_mark_primary_se(const mem_opt_t *opt, int n, mem_alnreg_t *a, int64_t id
 	 * excluded. We want to know if it aligns to multiple places
 	 * really well.
 	 */
-//	mem_mark_primary_se_core(opt, n, a, &z);
+	mem_mark_primary_se_core(opt, n, a, &z);
 	for (i = 0; i < n; ++i) {
 		mem_alnreg_t *p = &a[i];
 		p->secondary_all = i; // keep the rank in the first round
@@ -587,15 +587,11 @@ int mem_mark_primary_se(const mem_opt_t *opt, int n, mem_alnreg_t *a, int64_t id
 			} else a[i].secondary_all = -1;
 		}
 
-	/* I (Mark Ebbert) am removing mem_mark_primary_se_core from
-	 * service to prevent both primary and sub alignments from being
-	 * excluded. We want to know if it aligns to multiple places
-	 * really well.
-	 */
-//		if (n_pri > 0) { // mark primary for hits to the primary assembly only
-//			for (i = 0; i < n_pri; ++i) a[i].sub = 0, a[i].secondary = -1;
-//			mem_mark_primary_se_core(opt, n_pri, a, &z);
-//		}
+
+		if (n_pri > 0) { // mark primary for hits to the primary assembly only
+			for (i = 0; i < n_pri; ++i) a[i].sub = 0, a[i].secondary = -1;
+			mem_mark_primary_se_core(opt, n_pri, a, &z);
+		}
 	} else {
 		for (i = 0; i < n; ++i)
 			a[i].secondary_all = a[i].secondary;
