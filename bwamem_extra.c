@@ -1,4 +1,5 @@
 #include <limits.h>
+#include <inttypes.h>
 #include "bwa.h"
 #include "bwamem.h"
 #include "bntseq.h"
@@ -163,11 +164,46 @@ char **mem_gen_alt(const mem_opt_t *opt, const bntseq_t *bns, const uint8_t *pac
 		}
 		kputc(',', &str); kputw(t.NM, &str);
 
+
+
+
+// 		fprintf(stderr, "\n#####\n");
+// 		fprintf(stderr, "# t #\n");
+// 		fprintf(stderr, "#####\n");
+// 
+// 		fprintf(stderr, "ref rb - re: %" PRId64 "\n", t.pos);
+// 		fprintf(stderr, "alt score: %d\n", t.alt_sc);
+// 		fprintf(stderr, "score: %d\n", t.score);
+// 		fprintf(stderr, "sub score: %d\n", t.sub);
+// 		fprintf(stderr, "is alt: %d\n", t.is_alt);
+//
+//
+//		if(p->secondary >= 0){
+//			fprintf(stderr, "\n\n\n\n##########\n");
+//			fprintf(stderr, "# Parent #\n");
+//			fprintf(stderr, "##########\n");
+//	 
+//			fprintf(stderr, "parent rb - re: %" PRId64 " - %" PRId64 "\n", parent->rb, parent->re);
+//			fprintf(stderr, "alt score: %d\n", parent->alt_sc);
+//			fprintf(stderr, "score: %d\n", parent->score);
+//			fprintf(stderr, "true score: %d\n", parent->truesc);
+//			fprintf(stderr, "sub score: %d\n", parent->sub);
+//			fprintf(stderr, "csub score: %d\n", parent->csub);
+//			fprintf(stderr, "n sub: %d\n", parent->sub_n);
+//			fprintf(stderr, "seedcov: %d\n", parent->seedcov);
+//			fprintf(stderr, "secondary: %d\n", parent->secondary);
+//			fprintf(stderr, "is alt: %d\n", parent->is_alt);
+//			fprintf(stderr, "frac_rep: %f\n", parent->frac_rep);
+//		}
+
+
+
 		/* I (Mark Ebbert) added this to include the quality score for the secondary alignment.
 		 * I also made it calculate quality scores for secondary alignments, instead of making
 		 * them 0.
 		 */
 		kputc(',', &str); kputw(t.mapq, &str);
+
 		kputc(';', &str);
 		free(t.cigar);
 		kputsn(str.s, str.l, &aln[r]);

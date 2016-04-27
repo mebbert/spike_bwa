@@ -524,12 +524,12 @@ static void mem_mark_primary_se_core(const mem_opt_t *opt, int n, mem_alnreg_t *
 					if (a[j].score - a[i].score <= tmp && (a[j].is_alt || !a[i].is_alt))
 						++a[j].sub_n;
 
-					if (a[i].score == 200){
-						fprintf(stderr, "\n(i) a[%d] qb-qe: %d - %d\n", i, a[i].qb, a[i].qe);
-						fprintf(stderr, "(i) a[%d] rb-re: %" PRId64 " - %" PRId64 "\n", i, a[i].rb, a[i].re);
-						fprintf(stderr, "(j) a[%d] qb-qe: %d - %d\n", j, a[j].qb, a[j].qe);
-						fprintf(stderr, "(j) a[%d] rb-re: %" PRId64 " - %" PRId64 "\n", j, a[j].rb, a[j].re);
-					}
+//					if (a[i].score == 200){
+//						fprintf(stderr, "\n(i) a[%d] qb-qe: %d - %d\n", i, a[i].qb, a[i].qe);
+//						fprintf(stderr, "(i) a[%d] rb-re: %" PRId64 " - %" PRId64 "\n", i, a[i].rb, a[i].re);
+//						fprintf(stderr, "(j) a[%d] qb-qe: %d - %d\n", j, a[j].qb, a[j].qe);
+//						fprintf(stderr, "(j) a[%d] rb-re: %" PRId64 " - %" PRId64 "\n", j, a[j].rb, a[j].re);
+//					}
 					break;
 				}
 			}
@@ -993,43 +993,43 @@ int mem_approx_mapq_se(const mem_opt_t *opt, const mem_alnreg_t *a, const mem_al
 {
 
 // 	if(a->secondary >= 0/* && a_parent->score == a->score*/){
-	if(a->rb > 35537008 && a->rb < 35540000){
+// 	if(a->rb > 35537008 && a->rb < 35540000){
+// 
+//  		fprintf(stderr, "\n#####\n");
+//  		fprintf(stderr, "# a #\n");
+//  		fprintf(stderr, "#####\n");
+//  
+//  		fprintf(stderr, "ref rb - re: %" PRId64 " - %" PRId64 "\n", a->rb, a->re);
+//  		fprintf(stderr, "alt score: %d\n", a->alt_sc);
+//  		fprintf(stderr, "score: %d\n", a->score);
+//  		fprintf(stderr, "true score: %d\n", a->truesc);
+//  		fprintf(stderr, "sub score: %d\n", a->sub);
+//  		fprintf(stderr, "csub score: %d\n", a->csub);
+//  		fprintf(stderr, "n sub: %d\n", a->sub_n);
+//  		fprintf(stderr, "seedcov: %d\n", a->seedcov);
+//  		fprintf(stderr, "secondary: %d\n", a->secondary);
+//  		fprintf(stderr, "is alt: %d\n", a->is_alt);
+//  		fprintf(stderr, "frac_rep: %f\n", a->frac_rep);
 
- 		fprintf(stderr, "\n#####\n");
- 		fprintf(stderr, "# a #\n");
- 		fprintf(stderr, "#####\n");
- 
- 		fprintf(stderr, "ref rb - re: %" PRId64 " - %" PRId64 "\n", a->rb, a->re);
- 		fprintf(stderr, "alt score: %d\n", a->alt_sc);
- 		fprintf(stderr, "score: %d\n", a->score);
- 		fprintf(stderr, "true score: %d\n", a->truesc);
- 		fprintf(stderr, "sub score: %d\n", a->sub);
- 		fprintf(stderr, "csub score: %d\n", a->csub);
- 		fprintf(stderr, "n sub: %d\n", a->sub_n);
- 		fprintf(stderr, "seedcov: %d\n", a->seedcov);
- 		fprintf(stderr, "secondary: %d\n", a->secondary);
- 		fprintf(stderr, "is alt: %d\n", a->is_alt);
- 		fprintf(stderr, "frac_rep: %f\n", a->frac_rep);
 
-
-	 	if(a->secondary >= 0/* && a_parent->score == a->score*/){
-			fprintf(stderr, "\n\n\n\n##########\n");
-			fprintf(stderr, "# Parent #\n");
-			fprintf(stderr, "##########\n");
-	 
-			fprintf(stderr, "parent rb - re: %" PRId64 " - %" PRId64 "\n", a_parent->rb, a_parent->re);
-			fprintf(stderr, "alt score: %d\n", a_parent->alt_sc);
-			fprintf(stderr, "score: %d\n", a_parent->score);
-			fprintf(stderr, "true score: %d\n", a_parent->truesc);
-			fprintf(stderr, "sub score: %d\n", a_parent->sub);
-			fprintf(stderr, "csub score: %d\n", a_parent->csub);
-			fprintf(stderr, "n sub: %d\n", a_parent->sub_n);
-			fprintf(stderr, "seedcov: %d\n", a_parent->seedcov);
-			fprintf(stderr, "secondary: %d\n", a_parent->secondary);
-			fprintf(stderr, "is alt: %d\n", a_parent->is_alt);
-			fprintf(stderr, "frac_rep: %f\n", a_parent->frac_rep);
-		}
- 	}
+// 	 	if(a->secondary >= 0/* && a_parent->score == a->score*/){
+// 			fprintf(stderr, "\n\n\n\n##########\n");
+// 			fprintf(stderr, "# Parent #\n");
+// 			fprintf(stderr, "##########\n");
+// 	 
+// 			fprintf(stderr, "parent rb - re: %" PRId64 " - %" PRId64 "\n", a_parent->rb, a_parent->re);
+// 			fprintf(stderr, "alt score: %d\n", a_parent->alt_sc);
+// 			fprintf(stderr, "score: %d\n", a_parent->score);
+// 			fprintf(stderr, "true score: %d\n", a_parent->truesc);
+// 			fprintf(stderr, "sub score: %d\n", a_parent->sub);
+// 			fprintf(stderr, "csub score: %d\n", a_parent->csub);
+// 			fprintf(stderr, "n sub: %d\n", a_parent->sub_n);
+// 			fprintf(stderr, "seedcov: %d\n", a_parent->seedcov);
+// 			fprintf(stderr, "secondary: %d\n", a_parent->secondary);
+// 			fprintf(stderr, "is alt: %d\n", a_parent->is_alt);
+// 			fprintf(stderr, "frac_rep: %f\n", a_parent->frac_rep);
+// 		}
+// 	}
 
 	int mapq, l, sub = a->sub? a->sub : opt->min_seed_len * opt->a;
 	double identity;
@@ -1064,17 +1064,19 @@ int mem_approx_mapq_se(const mem_opt_t *opt, const mem_alnreg_t *a, const mem_al
 		tmp = l < opt->mapQ_coef_len? 1. : opt->mapQ_coef_fac / log(l);
 		tmp *= identity * identity;
 		mapq = (int)(6.02 * (a->score - sub) / opt->a * tmp * tmp + .499);
+//		mapq = (int)(6.02 * (a->score) / opt->a * tmp * tmp + .499);
 //		if(a->secondary >= 0){
- 		if(a->rb > 35537008 && a->rb < 35540000){
- 			fprintf(stderr, "\n\nlength: %d\n", l);
- 			fprintf(stderr, "identity: %f\n", identity);
- 			fprintf(stderr, "MapQ_coef_len: %f\n", opt->mapQ_coef_len);
- 			fprintf(stderr, "opt A: %d\n", opt->a);
- 			fprintf(stderr, "tmp: %f\n", tmp);
- 			fprintf(stderr, "mapq 1: %d\n", mapq);
- 		}
+// 		if(a->rb > 35537008 && a->rb < 35540000){
+// 			fprintf(stderr, "\n\nlength: %d\n", l);
+// 			fprintf(stderr, "identity: %f\n", identity);
+// 			fprintf(stderr, "MapQ_coef_len: %f\n", opt->mapQ_coef_len);
+// 			fprintf(stderr, "opt A: %d\n", opt->a);
+// 			fprintf(stderr, "tmp: %f\n", tmp);
+// 			fprintf(stderr, "mapq 1: %d\n", mapq);
+// 		}
 	} else {
 		mapq = (int)(MEM_MAPQ_COEF * (1. - (double)sub / a->score) * log(a->seedcov) + .499);
+//		mapq = (int)(MEM_MAPQ_COEF * (1. / a->score) * log(a->seedcov) + .499);
 		mapq = identity < 0.95? (int)(mapq * identity * identity + .499) : mapq;
 	}
 
@@ -1082,7 +1084,7 @@ int mem_approx_mapq_se(const mem_opt_t *opt, const mem_alnreg_t *a, const mem_al
 	 * if it aligns to more than two places. Two freebies.
 	 */
 	if (a->sub_n > 2){
-		mapq -= (int)(4.343 * log((a->sub_n+1) - 2 /* subtracting two. keeping everything else the same for reference */) + .499);
+		mapq -= (int)(4.343 * log((a->sub_n+1) - 2 /* subtracting two. keeping everything else the same for future reference */) + .499);
 	}
 	if (mapq > 60) mapq = 60;
 	if (mapq < 0) mapq = 0;
