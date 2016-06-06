@@ -1058,7 +1058,13 @@ int mem_approx_mapq_se(const mem_opt_t *opt, const mem_alnreg_t *a, const mem_al
 	identity = 1. - (double)(l * opt->a - a->score) / (opt->a + opt->b) / l;
 	if (a->score == 0) {
 		mapq = 0;
-	} else if (opt->mapQ_coef_len > 0) {
+	}
+
+	/* I (Mark Ebbert) disabled the two following code blocks because
+	 * they penalize for alternate alignments. We do not want to penalize
+	 * for the assembler.
+	 */
+	/*else if (opt->mapQ_coef_len > 0) {
 
 		double tmp;
 		tmp = l < opt->mapQ_coef_len? 1. : opt->mapQ_coef_fac / log(l);
@@ -1076,16 +1082,19 @@ int mem_approx_mapq_se(const mem_opt_t *opt, const mem_alnreg_t *a, const mem_al
 // 		}
 	} else {
 		mapq = (int)(MEM_MAPQ_COEF * (1. - (double)sub / a->score) * log(a->seedcov) + .499);
-//		mapq = (int)(MEM_MAPQ_COEF * (1. / a->score) * log(a->seedcov) + .499);
 		mapq = identity < 0.95? (int)(mapq * identity * identity + .499) : mapq;
-	}
+	}*/
 
 	/* I (Mark Ebbert) modified this to only penalize
 	 * if it aligns to more than two places. Two freebies.
 	 */
-	if (a->sub_n > 2){
-		mapq -= (int)(4.343 * log((a->sub_n+1) - 2 /* subtracting two. keeping everything else the same for future reference */) + .499);
-	}
+
+	/* I (Mark Ebbert) commented this out. For the assembler, we don't
+	 * want to penalize at all for sub alignments.
+	 */
+//	if (a->sub_n > 2){
+//		mapq -= (int)(4.343 * log((a->sub_n+1) - 2 /* subtracting two. keeping everything else the same for future reference */) + .499);
+//	}
 	if (mapq > 60) mapq = 60;
 	if (mapq < 0) mapq = 0;
 	mapq = (int)(mapq * (1. - a->frac_rep) + .499);
